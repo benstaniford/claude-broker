@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -53,6 +54,15 @@ def find_claude() -> str | None:
     return str(local) if os.access(local, os.X_OK) else None
 
 
+def is_socket(path: Path) -> bool:
+    """A unix socket itself, not a symlink to one: a client's folder is writable from its
+    container, which could otherwise point tools.sock at any socket on the host."""
+    try:
+        return stat.S_ISSOCK(os.lstat(path).st_mode)
+    except OSError:
+        return False
+
+
 @dataclass
 class BrokerConfig:
     claude: str = ""                 # empty: find_claude() at each run
@@ -85,6 +95,9 @@ class ClientConfig:
 
     def tools_socket(self) -> Path:
         return self.socket_dir() / TOOLS_SOCKET
+
+    def has_tools(self) -> bool:
+        return is_socket(self.tools_socket())
 
     def root_for(self, path: Path) -> tuple[Path, bool] | None:
         """The root a (resolved) folder sits under, and whether it may be written; the most

@@ -160,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json(200, {
             "ok": True, "version": VERSION, "client": client.name,
             "claude": broker.config.claude_bin(),
-            "tools_socket": client.tools_socket().exists(),
+            "tools_socket": client.has_tools(),
             "models": client.models, "max_run_seconds": client.max_run_seconds,
             **broker.registry.stats(client.name),
         })

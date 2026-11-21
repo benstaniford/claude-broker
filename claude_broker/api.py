@@ -130,9 +130,9 @@ def validate_run(body, client: ClientConfig, broker: BrokerConfig, profiles: Pro
             not all(isinstance(t, str) and TOOL_RE.match(t) for t in mcp_tools):
         errors.append("mcp_tools: a list of tool names (letters, digits, _ or -) from the client's MCP server")
         mcp_tools = []
-    if mcp_tools and not client.tools_socket().exists():
+    if mcp_tools and not client.has_tools():
         errors.append(f"mcp_tools: the client's MCP server isn't listening at {client.tools_socket()} "
-                      f"(tools.sock in the mounted folder)")
+                      f"(tools.sock in the mounted folder: a socket, not a link)")
 
     fields = body.get("stream_fields") or []
     if not isinstance(fields, list) or len(fields) > MAX_FIELDS or \

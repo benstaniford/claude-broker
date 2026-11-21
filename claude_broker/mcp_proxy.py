@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import socket
+import stat
 import sys
 import threading
 
@@ -17,6 +18,15 @@ import threading
 def relay(path: str, stdin=None, stdout=None) -> int:
     stdin = stdin or sys.stdin.buffer
     stdout = stdout or sys.stdout.buffer
+    # tools.sock sits in a folder the client's container can write: a symlink there could aim
+    # this relay at any socket on the host, so only a socket itself is used.
+    try:
+        is_socket = stat.S_ISSOCK(os.lstat(path).st_mode)
+    except OSError:
+        is_socket = False
+    if not is_socket:
+        print(f"claude-broker mcp-proxy: {path} isn't a unix socket (links aren't followed)", file=sys.stderr)
+        return 1
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
         sock.connect(path)

@@ -204,7 +204,8 @@ To give Claude your app's own tools, serve MCP (newline-delimited JSON-RPC, as o
 unix socket called `tools.sock` in the mounted folder, then list the tool names in `mcp_tools`.
 For each run the broker starts `claude-broker mcp-proxy`, which relays claude's stdio to your
 socket. Your tools run inside your container and nothing of yours runs on the host. Each
-connection to `tools.sock` is one MCP session, beginning with `initialize`.
+connection to `tools.sock` is one MCP session, beginning with `initialize`. `tools.sock` must be the
+socket itself: the relay won't follow a symlink, which could point it at another socket on the host.
 
 ## Security model
 

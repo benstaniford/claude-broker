@@ -308,6 +308,23 @@ class McpTest(BrokerCase):
         from claude_broker.mcp_proxy import relay
         self.assertEqual(relay(str(self.tmp / "nothing.sock")), 1)
 
+    def test_a_linked_tools_socket_is_refused(self):
+        from claude_broker.mcp_proxy import relay
+        host = socket.socket(socket.AF_UNIX)                         # some other socket on the host
+        host.bind(str(self.tmp / "host.sock"))
+        host.listen(1)
+        self.addCleanup(host.close)
+        link = self.tmp / "link.sock"
+        link.symlink_to(self.tmp / "host.sock")
+        self.assertEqual(relay(str(link)), 1)
+        tools = self.tmp / "run" / "app" / "tools.sock"
+        tools.unlink()
+        tools.symlink_to(self.tmp / "host.sock")
+        self.assertFalse(self.client().health()["tools_socket"])
+        with self.assertRaises(BrokerError) as caught:
+            list(self.client().run("x", mcp_tools=["roll"]))
+        self.assertEqual(caught.exception.status, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

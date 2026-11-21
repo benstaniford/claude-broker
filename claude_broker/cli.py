@@ -97,7 +97,7 @@ def cmd_client_list(args) -> int:
     for client in clients.values():
         print(f"{client.name}")
         print(f"  socket:      {client.broker_socket()}" + ("" if client.broker_socket().exists() else "  (not listening)"))
-        print(f"  tools.sock:  {'present' if client.tools_socket().exists() else 'absent'}")
+        print(f"  tools.sock:  {'present' if client.has_tools() else 'absent'}")
         print(f"  read/write:  {', '.join(map(str, client.workspace_roots)) or '-'}")
         print(f"  read only:   {', '.join(map(str, client.read_only_roots)) or '-'}")
         print(f"  models:      {', '.join(client.models) or 'any'}"
