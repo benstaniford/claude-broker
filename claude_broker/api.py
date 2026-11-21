@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from pathlib import Path
@@ -17,6 +18,7 @@ SESSION_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA
 TOOL_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 FIELD_RE = re.compile(r"^.{1,100}$", re.S)
 MAX_PROMPT = 1024 * 1024
+MAX_SCHEMA = 64 * 1024          # it goes on claude's command line: well under the kernel's per-argument limit
 MAX_FIELDS = 20
 MAX_DIRS = 20
 MAX_MCP_TOOLS = 100
@@ -73,6 +75,8 @@ def validate_run(body, client: ClientConfig, broker: BrokerConfig, profiles: Pro
     schema = body.get("schema")
     if schema is not None and not isinstance(schema, dict):
         errors.append("schema: a JSON schema object")
+    elif schema is not None and len(json.dumps(schema).encode()) > MAX_SCHEMA:
+        errors.append(f"schema: larger than {MAX_SCHEMA // 1024} KB")
 
     effort = body.get("effort") or ""
     if effort and effort not in EFFORTS:

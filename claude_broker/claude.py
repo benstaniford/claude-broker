@@ -275,8 +275,10 @@ class ClaudeProcess:
                     build_command(spec), cwd=spec.cwd, env=run_env(), stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE, stdin=subprocess.PIPE, text=True, encoding="utf-8",
                     errors="replace", start_new_session=True)
-            except FileNotFoundError:
+            except (FileNotFoundError, PermissionError):
                 raise RunFailed(f"claude executable not found: {spec.claude}", kind="no_claude")
+            except OSError as e:
+                raise RunFailed(f"couldn't start claude: {e}")
         proc = self.proc
         assert proc.stdin is not None and proc.stdout is not None and proc.stderr is not None
         stdin, stdout, stderr_pipe = proc.stdin, proc.stdout, proc.stderr

@@ -88,6 +88,7 @@ class ServerTest(BrokerCase):
             dict(timeout=10_000),
             dict(session={"resume": "not-a-uuid"}),
             dict(run_id="has spaces"),
+            dict(schema={"description": "x" * 70_000}),
         ]
         for kw in cases:
             with self.subTest(kw), self.assertRaises(BrokerError) as caught:

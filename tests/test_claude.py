@@ -137,6 +137,12 @@ class ProcessTest(BrokerCase):
         with self.assertRaises(RunFailed) as caught:
             self.run_spec(self.spec(claude=str(self.tmp / "no-such-claude")))
         self.assertEqual(caught.exception.kind, "no_claude")
+        garbage = self.tmp / "not-a-program"
+        garbage.write_bytes(b"\x00\x01\x02")
+        garbage.chmod(0o755)
+        with self.assertRaises(RunFailed) as caught:                    # ENOEXEC: a clear error, not internal
+            self.run_spec(self.spec(claude=str(garbage)))
+        self.assertIn("couldn't start claude", caught.exception.detail)
 
     def test_timeout_and_kill(self):
         os.environ["FAKE_CLAUDE_MODE"] = "hang"

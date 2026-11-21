@@ -153,7 +153,7 @@ HTTP/1.1 over the client's socket. JSON errors are `{"errors": ["..."]}`: 400 fo
 | `run_id` | a new id | 1–128 of `A-Za-z0-9._:-`. Running or recently finished: you get the same run |
 | `profile` | an empty folder | an uploaded profile's name: the run's working folder |
 | `session` | `{"new": true}` | or `{"resume": "<session_id>"}` from an earlier result: same client, model and profile only |
-| `schema` | none | a JSON schema: the reply comes as `structured` |
+| `schema` | none | a JSON schema (at most 64 KB): the reply comes as `structured` |
 | `model`, `effort` | the client's defaults | `effort`: `low medium high xhigh max` |
 | `add_dirs` | `[]` | `[{"path": "/host/folder", "write": false}]` (or just the path), under the client's roots |
 | `builtin_tools` | Read, Grep, Glob (plus Edit, Write if any folder is writable) | out of the client's allowed tools. Bash is never offered |
