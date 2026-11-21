@@ -1,5 +1,6 @@
 """Config, profiles and sessions."""
 
+import gzip
 import io
 import os
 import tarfile
@@ -127,6 +128,11 @@ class ProfileTest(BrokerCase):
                 self.store.put("app", "h", tarball(entries))
         with self.assertRaises(ProfileError):
             self.store.put("app", "h", b"not a tarball")
+        with self.assertRaises(ProfileError) as caught:                 # a small gzip of a huge archive
+            self.store.put("app", "h", gzip.compress(b"\0" * (64 * 1024 * 1024)))
+        self.assertIn("uncompressed", caught.exception.errors[0])
+        with self.assertRaises(ProfileError):
+            self.store.put("app", "h", tarball(GOOD)[:-20])             # cut short
         with self.assertRaises(ProfileError):
             self.store.put("app", "Bad/Name", tarball(GOOD))
         with self.assertRaises(ProfileError):

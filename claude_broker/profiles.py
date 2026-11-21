@@ -25,6 +25,7 @@ import shutil
 import tarfile
 import threading
 import uuid
+import zlib
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -86,12 +87,34 @@ def _member_path(name: str) -> PurePosixPath | None:
     return PurePosixPath(*parts) if parts else PurePosixPath()
 
 
+def _decompress(data: bytes) -> bytes:
+    """A gzip upload unpacked, stopping at MAX_UPLOAD bytes: tarfile would otherwise inflate a
+    small gzip of a huge archive in full just to list it."""
+    if data[:2] != b"\x1f\x8b":
+        return data
+    out = bytearray()
+    rest = data
+    try:
+        while rest[:2] == b"\x1f\x8b":                  # gzip members may be concatenated
+            inflate = zlib.decompressobj(wbits=31)
+            out += inflate.decompress(rest, MAX_UPLOAD + 1 - len(out))
+            if len(out) > MAX_UPLOAD or inflate.unconsumed_tail:
+                raise ProfileError([f"more than {MAX_UPLOAD // (1024 * 1024)} MB uncompressed"])
+            if not inflate.eof:
+                raise ProfileError(["not a tar archive: the gzip stream is cut short"])
+            rest = inflate.unused_data
+    except zlib.error as e:
+        raise ProfileError([f"not a tar archive: {e}"])
+    return bytes(out)
+
+
 def read_upload(data: bytes) -> dict[str, bytes]:
     """The files of an uploaded tarball (gzip or plain), checked: path → content."""
     if len(data) > MAX_UPLOAD:
         raise ProfileError([f"the upload is larger than {MAX_UPLOAD // (1024 * 1024)} MB"])
+    data = _decompress(data)
     try:
-        archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
+        archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:")
     except (tarfile.TarError, OSError, EOFError) as e:
         raise ProfileError([f"not a tar archive: {e}"])
     files: dict[str, bytes] = {}

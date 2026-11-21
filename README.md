@@ -195,7 +195,7 @@ CLAUDE.md                   project memory
 ```
 
 Anything else is refused: settings, hooks, MCP config, scripts, links, binary files. The broker
-drops execute bits, caps a profile at 20 MB and 2,000 files, and keeps each profile at a fixed
+drops execute bits, caps an upload at 32 MB (after gunzip) and a profile at 20 MB and 2,000 files, and keeps each profile at a fixed
 path. Claude files sessions by folder, so `resume` keeps working across uploads. A run already
 going keeps the copy it started with.
 
