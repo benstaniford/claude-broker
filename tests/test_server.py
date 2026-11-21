@@ -207,6 +207,20 @@ class ServerTest(BrokerCase):
         self.assertNotIn("started", kinds(results["q2"]))
         self.assertEqual(len(self.calls()), 2)
 
+    def test_a_full_queue_is_refused(self):
+        self.write_client("app", f'workspace_roots = ["{self.work}"]\nmax_queued = 1\n')
+        self.broker.reload()
+        os.environ["FAKE_CLAUDE_MODE"] = "hang"
+        for run_id in ("running", "waiting"):
+            threading.Thread(target=lambda r=run_id: list(self.client().run("x", run_id=r)), daemon=True).start()
+            self.wait_for(lambda r=run_id: r in [x["run_id"] for x in self.app.runs()], message=run_id)
+        with self.assertRaises(BrokerError) as caught:
+            list(self.app.run("x", run_id="one-too-many"))
+        self.assertEqual(caught.exception.status, 429)
+        self.assertEqual(next(self.app.run("x", run_id="waiting"))["type"], "queued")   # a known id still rejoins
+        for run_id in ("waiting", "running"):
+            self.app.cancel(run_id)
+
     def test_global_cap_across_clients(self):
         (self.config / "broker.toml").write_text(f'claude = "{self.claude}"\nmax_concurrent = 1\n')
         self.write_client("other", f'workspace_roots = ["{self.work}"]\nmax_concurrent = 4\n')

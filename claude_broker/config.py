@@ -84,6 +84,7 @@ class ClientConfig:
     default_model: str = ""
     default_effort: str = ""
     max_concurrent: int = 1
+    max_queued: int = 20                                        # runs waiting for a turn
     max_run_seconds: int = 900
     allowed_builtin_tools: list[str] = field(default_factory=lambda: list(BUILTIN_TOOLS))
 
@@ -178,7 +179,7 @@ def load_client(path: Path) -> ClientConfig:
         raise ConfigError(f"{path}: a client's name (the file's) must be lowercase letters, digits, - or _")
     data = _read(path)
     known = {"workspace_roots", "read_only_roots", "models", "default_model", "default_effort",
-             "max_concurrent", "max_run_seconds", "allowed_builtin_tools"}
+             "max_concurrent", "max_queued", "max_run_seconds", "allowed_builtin_tools"}
     unknown = set(data) - known
     if unknown:
         raise ConfigError(f"{path}: unknown settings: {', '.join(sorted(unknown))}")
@@ -198,6 +199,7 @@ def load_client(path: Path) -> ClientConfig:
         default_model=_str(data, "default_model", "", path),
         default_effort=effort,
         max_concurrent=_int(data, "max_concurrent", 1, 1, 32, path),
+        max_queued=_int(data, "max_queued", 20, 0, 1000, path),
         max_run_seconds=_int(data, "max_run_seconds", 900, 10, 6 * 3600, path),
         allowed_builtin_tools=tools,
     )
@@ -259,6 +261,7 @@ def write_client(client: ClientConfig) -> Path:
         "default_model": client.default_model,
         "default_effort": client.default_effort,
         "max_concurrent": client.max_concurrent,
+        "max_queued": client.max_queued,
         "max_run_seconds": client.max_run_seconds,
         "allowed_builtin_tools": client.allowed_builtin_tools,
     }

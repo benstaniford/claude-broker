@@ -74,7 +74,7 @@ def cmd_client_add(args) -> int:
     client = ClientConfig(
         name=args.name, workspace_roots=_abs(args.root), read_only_roots=_abs(args.read_only),
         models=args.model or [], default_model=args.default_model or "", default_effort=args.effort or "",
-        max_concurrent=args.max_concurrent, max_run_seconds=args.max_run_seconds, allowed_builtin_tools=tools)
+        max_concurrent=args.max_concurrent, max_queued=args.max_queued, max_run_seconds=args.max_run_seconds, allowed_builtin_tools=tools)
     for root in client.workspace_roots + client.read_only_roots:
         if not root.is_dir():
             print(f"warning: {root} isn't a folder (yet)", file=sys.stderr)
@@ -102,7 +102,8 @@ def cmd_client_list(args) -> int:
         print(f"  read only:   {', '.join(map(str, client.read_only_roots)) or '-'}")
         print(f"  models:      {', '.join(client.models) or 'any'}"
               + (f" (default {client.default_model})" if client.default_model else ""))
-        print(f"  limits:      {client.max_concurrent} at once, {client.max_run_seconds}s a run")
+        print(f"  limits:      {client.max_concurrent} at once, {client.max_queued} waiting, "
+              f"{client.max_run_seconds}s a run")
     for problem in problems:
         print(f"problem: {problem}", file=sys.stderr)
     if not clients and not problems:
@@ -323,6 +324,7 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--default-model", metavar="MODEL")
     s.add_argument("--effort", choices=EFFORTS, help="default effort")
     s.add_argument("--max-concurrent", type=int, default=1)
+    s.add_argument("--max-queued", type=int, default=20, help="runs that may wait for a turn")
     s.add_argument("--max-run-seconds", type=int, default=900)
     s.add_argument("--tools", help=f"built-in tools it may ask for (default: {','.join(BUILTIN_TOOLS)})")
     s.add_argument("--force", action="store_true", help="replace an existing client")

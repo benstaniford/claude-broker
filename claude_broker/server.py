@@ -197,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             run, created = broker.registry.submit(client, request)
         except RunFailed as e:
-            return self._error(503, e.detail)
+            return self._error(429 if e.kind == "queue_full" else 503, e.detail)
         self._stream(run, 0, created)
 
     def _delete_runs(self, client: ClientConfig, rest, query) -> None:

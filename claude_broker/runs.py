@@ -6,7 +6,8 @@
   `keep_finished_seconds`; a follower gets them all from any point, then the live ones.
 - A client going away doesn't stop its run: only `cancel` (or the timeout) does.
 - At most `max_concurrent` runs at once over all clients, and each client's own cap; the
-  rest wait in one queue, first come first served among clients with room.
+  rest wait in one queue, first come first served among clients with room; each client may
+  have at most `max_queued` waiting.
 """
 
 from __future__ import annotations
@@ -150,6 +151,10 @@ class Registry:
             existing = self.runs.get((client.name, request.run_id))
             if existing:
                 return existing, False
+            queued = sum(q.client.name == client.name for q in self.queue)
+            if queued >= client.max_queued:
+                raise RunFailed(f"{queued} runs are already waiting for this client (max_queued)",
+                                kind="queue_full")
             run = Run(client, request, self.clock)
             self.runs[(client.name, run.id)] = run
             self.queue.append(run)

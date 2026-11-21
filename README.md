@@ -72,6 +72,7 @@ folders as the host sees them. Mount them into the container too if the app read
 | `models` | `[]` | allowed models; empty means any |
 | `default_model`, `default_effort` | `""` | used when a run doesn't say |
 | `max_concurrent` | `1` | this client's runs at once |
+| `max_queued` | `20` | this client's runs waiting for a turn; more get a 429 |
 | `max_run_seconds` | `900` | the longest a run may take, and the default timeout |
 | `allowed_builtin_tools` | all six | out of `Read Grep Glob Edit Write Skill` |
 
@@ -131,7 +132,7 @@ claude-broker call --client myapp "Say hello" --schema '{"type":"object","proper
 ## API
 
 HTTP/1.1 over the client's socket. JSON errors are `{"errors": ["..."]}`: 400 for a bad request,
-404 for an unknown run or profile, 503 for a removed client or a broker that's stopping.
+404 for an unknown run or profile, 429 when the client's queue is full (`max_queued`), 503 for a removed client or a broker that's stopping.
 
 | | |
 |---|---|
