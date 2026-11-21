@@ -1,6 +1,6 @@
 """A stand-in for `claude -p ... --output-format stream-json`: what the broker reads.
 
-FAKE_CLAUDE_LOG    a file each call's argv, cwd and chosen env are appended to (JSON lines)
+FAKE_CLAUDE_LOG    a file each call's argv, prompt (stdin), cwd and chosen env are appended to (JSON lines)
 FAKE_CLAUDE_MODE   ok (default) | fail | missing | hang | noschema | crash-after-stream
 FAKE_SLEEP         seconds to wait before the result (queue tests)
 FAKE_REPLY         the structured reply (JSON); default {"narration": ..., "scene": ...}
@@ -16,8 +16,9 @@ import sys
 import time
 
 args = sys.argv[1:]
+prompt = sys.stdin.read()
 with open(os.environ["FAKE_CLAUDE_LOG"], "a") as f:
-    f.write(json.dumps({"args": args, "cwd": os.getcwd(), "env": {
+    f.write(json.dumps({"args": args, "prompt": prompt, "cwd": os.getcwd(), "env": {
         k: os.environ.get(k) for k in ("ENABLE_CLAUDEAI_MCP_SERVERS", "CLAUDE_CODE_DISABLE_BUNDLED_SKILLS",
                                        "CLAUDE_CODE_DISABLE_AUTO_MEMORY", "CLAUDE_BROKER_STATE")}}) + "\n")
 

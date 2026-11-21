@@ -217,6 +217,7 @@ connection to `tools.sock` is one MCP session, beginning with `initialize`.
   - `--setting-sources project`, so your own settings, permissions and hooks are never loaded
   - `--strict-mcp-config`, so only the client's relayed MCP server is available
   - `--permission-mode dontAsk`
+  - the prompt on stdin, never on the command line, so it can't be read as an option
   - no ancestor `CLAUDE.md`
   - no claude.ai connectors, bundled skills or auto-memory
 - **What the broker runs:** `claude`, and its own `mcp-proxy`. Never anything a client sent.

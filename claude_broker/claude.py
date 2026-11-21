@@ -107,8 +107,10 @@ def allowed_tools(spec: RunSpec) -> list[str]:
 
 
 def build_command(spec: RunSpec) -> list[str]:
+    """The argv. The prompt isn't in it: it goes on stdin, so a prompt that starts with `-`
+    can't be read as an option, and a long one isn't cut off by the kernel's argv limits."""
     cmd = [
-        spec.claude, "-p", spec.prompt,
+        spec.claude, "-p",
         "--output-format", "stream-json", "--verbose",   # stream-json carries the rate-limit event
         "--include-partial-messages",                    # ...and the structured reply as it's written
     ]
@@ -271,14 +273,28 @@ class ClaudeProcess:
                 # Its own process group, so a kill takes the MCP proxy and anything else with it.
                 self.proc = subprocess.Popen(
                     build_command(spec), cwd=spec.cwd, env=run_env(), stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, text=True, encoding="utf-8",
+                    stderr=subprocess.PIPE, stdin=subprocess.PIPE, text=True, encoding="utf-8",
                     errors="replace", start_new_session=True)
             except FileNotFoundError:
                 raise RunFailed(f"claude executable not found: {spec.claude}", kind="no_claude")
         proc = self.proc
-        assert proc.stdout is not None and proc.stderr is not None
-        stdout, stderr_pipe = proc.stdout, proc.stderr
+        assert proc.stdin is not None and proc.stdout is not None and proc.stderr is not None
+        stdin, stdout, stderr_pipe = proc.stdin, proc.stdout, proc.stderr
         err: list[str] = []
+
+        def feed():
+            try:
+                stdin.write(spec.prompt)
+            except OSError:          # claude exited without reading it all: its output says why
+                pass
+            finally:
+                try:
+                    stdin.close()
+                except OSError:
+                    pass
+
+        feeder = threading.Thread(target=feed, daemon=True)
+        feeder.start()
 
         def drain():
             while chunk := stderr_pipe.read(4096):
@@ -301,6 +317,7 @@ class ClaudeProcess:
             if proc.poll() is None:
                 self.kill(RunFailed("the broker stopped reading claude"))
                 proc.wait()
+            feeder.join(5)
             drainer.join(5)
             stdout.close()
             stderr_pipe.close()

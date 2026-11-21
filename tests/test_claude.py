@@ -36,7 +36,8 @@ class CommandTest(unittest.TestCase):
         cmd = build_command(self.spec(schema={"type": "object"}, model="m", effort="high", resume=True,
                                       system_prompt_file=Path("/p/prof/SYSTEM.md"), mcp_config=Path("/r/m.json")))
         joined = " ".join(cmd)
-        self.assertEqual(cmd[:3], ["claude", "-p", "hi"])
+        self.assertEqual(cmd[:3], ["claude", "-p", "--output-format"])
+        self.assertNotIn("hi", cmd)                                     # the prompt goes on stdin
         for flag in ("--output-format stream-json", "--include-partial-messages", "--strict-mcp-config",
                      "--permission-mode dontAsk", "--setting-sources project", "--resume s-1", "--model m",
                      "--effort high", "--append-system-prompt-file /p/prof/SYSTEM.md", "--mcp-config /r/m.json",
@@ -112,6 +113,14 @@ class ProcessTest(BrokerCase):
         self.assertEqual(call["env"]["ENABLE_CLAUDEAI_MCP_SERVERS"], "false")
         self.assertEqual(call["env"]["CLAUDE_CODE_DISABLE_AUTO_MEMORY"], "1")
         self.assertIsNone(call["env"]["CLAUDE_BROKER_STATE"])              # the broker's own settings stay home
+        self.assertEqual(call["prompt"], "hi")
+
+    def test_prompt_is_never_an_option(self):
+        prompt = "--dangerously-skip-permissions " + "x" * 600_000      # past the kernel's per-argument limit
+        self.run_spec(self.spec(prompt=prompt))
+        call = self.calls()[-1]
+        self.assertEqual(call["prompt"], prompt)
+        self.assertFalse(any(a.startswith("--dangerously") for a in call["args"]))
 
     def test_failures(self):
         os.environ["FAKE_CLAUDE_MODE"] = "fail"
