@@ -2,6 +2,7 @@
 
 Adapted from the Dungeons & Claude bridge (scripts/dm-bridge.py there). Every run:
 - reads only project settings (the profile's), never the user's permissions, hooks or MCP;
+- runs no hooks or skill shell commands, and loads no skills from the client's own folders;
 - loads no ancestor CLAUDE.md (e.g. ~/CLAUDE.md);
 - has only the built-in tools asked for, and permission rules for the folders asked for;
 - refuses anything else rather than prompting (`dontAsk`).
@@ -81,12 +82,29 @@ def claude_md_excludes(*starts: Path) -> list[str]:
     return found
 
 
-def locked_down(starts: list[Path]) -> list[str]:
+def run_settings(cwd: Path, add_dirs: list[Path]) -> dict:
+    """The `--settings` of every run. Flag settings beat project settings, so nothing in a profile
+    or a client's folder can turn these back on.
+    - no hooks and no skill `!` commands: a skill's frontmatter hooks and injected commands run
+      even in an untrusted `-p` run, and a skill is client-written text;
+    - the client's folders go in as `additionalDirectories`, not `--add-dir`: that grants file
+      access only, where `--add-dir` would also load the folder's skills, commands and agents
+      (and their `allowed-tools`) from files the client can write at any time."""
+    return {
+        "claudeMdExcludes": claude_md_excludes(cwd, *add_dirs),
+        "disableAllHooks": True,
+        "disableSkillShellExecution": True,
+        "permissions": {"additionalDirectories": [str(folder) for folder in add_dirs]},
+    }
+
+
+def locked_down(cwd: Path, add_dirs: list[Path]) -> list[str]:
     """Flags shared by every run: only the profile's project settings, no user MCP servers,
-    no ancestor CLAUDE.md files, and anything not explicitly allowed is refused, not prompted."""
+    no ancestor CLAUDE.md files, no hooks, and anything not explicitly allowed is refused,
+    not prompted."""
     return [
         "--setting-sources", "project",
-        "--settings", json.dumps({"claudeMdExcludes": claude_md_excludes(*starts)}),
+        "--settings", json.dumps(run_settings(cwd, add_dirs)),
         "--strict-mcp-config",
         "--permission-mode", "dontAsk",
     ]
@@ -118,9 +136,7 @@ def build_command(spec: RunSpec) -> list[str]:
         cmd += ["--json-schema", json.dumps(spec.schema)]
     if spec.system_prompt_file:
         cmd += ["--append-system-prompt-file", str(spec.system_prompt_file)]
-    for folder, _ in spec.add_dirs:
-        cmd += ["--add-dir", str(folder)]
-    cmd += locked_down([spec.cwd] + [folder for folder, _ in spec.add_dirs])
+    cmd += locked_down(spec.cwd, [folder for folder, _ in spec.add_dirs])
     if spec.mcp_config:
         cmd += ["--mcp-config", str(spec.mcp_config)]
     cmd += ["--tools", ",".join(t for t in BUILTIN_TOOLS if t in spec.builtin_tools)]

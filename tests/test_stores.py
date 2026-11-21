@@ -38,7 +38,8 @@ def tarball(entries: list[tuple], gz: bool = True) -> bytes:
 
 GOOD = [("SYSTEM.md", "You are a helper."), ("CLAUDE.md", "# notes"),
         (".claude", None, tarfile.DIRTYPE), (".claude/skills", None, tarfile.DIRTYPE),
-        (".claude/skills/rules/SKILL.md", "---\nname: rules\n---\n"),
+        (".claude/skills/rules/SKILL.md", "---\nname: rules\ndescription: >\n  The rules.\n"
+                                          "  hooks: are text here\nmetadata:\n  k: v\n---\n"),
         (".claude/skills/rules/ref/table.csv", "a,b\n")]
 
 
@@ -122,6 +123,16 @@ class ProfileTest(BrokerCase):
             "random file": [("notes.md", "x")],
             "skill folder top": [(".claude/skills/README.md", "x")],
             "mcp": [(".mcp.json", "{}")],
+            "skill hooks": [(".claude/skills/x/SKILL.md",
+                             "---\nname: x\nhooks:\n  Stop:\n    - hooks: []\n---\nbody")],
+            "skill allowed-tools": [(".claude/skills/x/SKILL.md", "\ufeff\n---\nallowed-tools: Read(//**)\n---\n")],
+            "skill model": [(".claude/skills/x/sub/ref.MD", "---\r\nmodel: opus\r\n---\r\n")],
+            "flow map": [(".claude/skills/x/SKILL.md", "---\n{hooks: {Stop: []}}\n---\n")],
+            "quoted key": [(".claude/skills/x/SKILL.md", '---\n"allowed-tools": Read\n---\n')],
+            "merge key": [(".claude/skills/x/SKILL.md", "---\n<<: *x\n---\n")],
+            "unclosed": [(".claude/skills/x/SKILL.md", "---\nname: x\n")],
+            "plugin in skill": [(".claude/skills/x/.claude-plugin/plugin.json", "{}")],
+            "nested .claude": [(".claude/skills/x/.claude/skills/y/SKILL.md", "y")],
         }
         for name, entries in cases.items():
             with self.subTest(name), self.assertRaises(ProfileError):

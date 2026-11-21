@@ -40,9 +40,13 @@ class CommandTest(unittest.TestCase):
         self.assertNotIn("hi", cmd)                                     # the prompt goes on stdin
         for flag in ("--output-format stream-json", "--include-partial-messages", "--strict-mcp-config",
                      "--permission-mode dontAsk", "--setting-sources project", "--resume s-1", "--model m",
-                     "--effort high", "--append-system-prompt-file /p/prof/SYSTEM.md", "--mcp-config /r/m.json",
-                     "--add-dir /w/game", "--add-dir /b/book"):
+                     "--effort high", "--append-system-prompt-file /p/prof/SYSTEM.md", "--mcp-config /r/m.json"):
             self.assertIn(flag, joined)
+        self.assertNotIn("--add-dir", cmd)                  # it would load the folders' skills and agents
+        settings = json.loads(cmd[cmd.index("--settings") + 1])
+        self.assertTrue(settings["disableAllHooks"])
+        self.assertTrue(settings["disableSkillShellExecution"])
+        self.assertEqual(settings["permissions"], {"additionalDirectories": ["/w/game", "/b/book"]})
         self.assertEqual(cmd[cmd.index("--tools") + 1], "Read,Grep,Edit,Write,Skill")
         self.assertEqual(json.loads(cmd[cmd.index("--json-schema") + 1]), {"type": "object"})
         self.assertNotIn("Bash", joined)

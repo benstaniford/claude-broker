@@ -4,10 +4,12 @@ A profile is the folder a run starts in (its `cwd`):
 
     SYSTEM.md              appended to Claude's system prompt (optional)
     CLAUDE.md              project memory (optional)
-    .claude/skills/**      skills: text only (.md .txt .json .csv .yaml .yml)
+    .claude/skills/**      skills: text only (.md .txt .json .csv .yaml .yml); a skill's
+                           frontmatter may only describe it (SKILL_KEYS): no allowed-tools,
+                           hooks, shell, model or subagent keys
 
-Nothing else is accepted: no settings, hooks, MCP servers, scripts or links. Execute bits
-are dropped. The broker never runs anything a client sends.
+Nothing else is accepted: no settings, hooks, MCP servers, scripts, links or dot-folders
+inside a skill. Execute bits are dropped. The broker never runs anything a client sends.
 
 Each profile lives at a fixed path (profiles/<client>/<name>/): claude files sessions by
 project folder, so a path that changed with every upload would lose `--resume`. An upload
@@ -21,6 +23,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import tarfile
 import threading
@@ -37,6 +40,13 @@ MAX_UNPACKED = 20 * 1024 * 1024
 MAX_FILES = 2000
 TEXT_SUFFIXES = {".md", ".txt", ".json", ".csv", ".yaml", ".yml"}
 DEFAULT = "_default"        # the empty profile of a run that names none (not a valid upload name)
+# Skill frontmatter that only describes a skill. Left out on purpose: `allowed-tools` (grants
+# permissions), `hooks` and `shell` (run commands), `model`, `effort`, `context`, `agent` and
+# `background` (change the run the client was given).
+SKILL_KEYS = {"name", "description", "when_to_use", "argument-hint", "arguments",
+              "disable-model-invocation", "user-invocable", "disallowed-tools", "paths",
+              "license", "compatibility", "metadata"}
+FRONTMATTER_KEY_RE = re.compile(r"([A-Za-z0-9_-]+)[ \t]*:(?:[ \t]|$)")
 
 
 class ProfileError(Exception):
@@ -67,12 +77,44 @@ def _allowed(path: PurePosixPath) -> bool:
     if parts in (("SYSTEM.md",), ("CLAUDE.md",)):
         return True
     return (len(parts) >= 4 and parts[0] == ".claude" and parts[1] == "skills"
+            and not any(p.startswith(".") for p in parts[2:])
             and path.suffix.lower() in TEXT_SUFFIXES)
 
 
 def _allowed_dir(path: PurePosixPath) -> bool:
     parts = path.parts
-    return parts in ((), (".claude",)) or parts[:2] == (".claude", "skills")
+    return (parts in ((), (".claude",))
+            or (parts[:2] == (".claude", "skills") and not any(p.startswith(".") for p in parts[2:])))
+
+
+def frontmatter_errors(text: str) -> list[str]:
+    """What's wrong with a skill file's YAML frontmatter: any top-level key not in
+    SKILL_KEYS, or anything that isn't plainly `key: value` (flow maps, merge keys, quoted
+    keys...), since Claude Code's own YAML parser decides what a key is."""
+    lines = text.lstrip("\ufeff").splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if not lines or lines[0].rstrip() != "---":
+        return []
+    try:
+        end = next(i for i, line in enumerate(lines[1:], 1) if line.rstrip() == "---")
+    except StopIteration:
+        return ["frontmatter with no closing ---"]
+    errors, seen_key = [], False
+    for line in lines[1:end]:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if line[0] == " " and seen_key:
+            continue
+        match = FRONTMATTER_KEY_RE.match(line)
+        if not match:
+            errors.append(f"frontmatter line {line.strip()[:40]!r} isn't a plain `key: value`")
+            continue
+        seen_key = True
+        if match.group(1) not in SKILL_KEYS:
+            errors.append(f"frontmatter key {match.group(1)!r} isn't allowed "
+                          f"(only {', '.join(sorted(SKILL_KEYS))})")
+    return errors
 
 
 def _member_path(name: str) -> PurePosixPath | None:
@@ -149,10 +191,12 @@ def read_upload(data: bytes) -> dict[str, bytes]:
             handle = archive.extractfile(member)
             content = handle.read() if handle else b""
             try:
-                content.decode("utf-8")
+                text = content.decode("utf-8")
             except UnicodeDecodeError:
                 errors.append(f"{member.name}: not UTF-8 text")
                 continue
+            if path.parts[0] == ".claude" and path.suffix.lower() == ".md":
+                errors += [f"{member.name}: {e}" for e in frontmatter_errors(text)]
             key = str(path)
             if key in files:
                 errors.append(f"{member.name}: twice in the archive")

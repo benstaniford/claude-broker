@@ -194,7 +194,12 @@ CLAUDE.md                   project memory
 .claude/skills/<skill>/...  skills: .md .txt .json .csv .yaml .yml only
 ```
 
-Anything else is refused: settings, hooks, MCP config, scripts, links, binary files. The broker
+Anything else is refused: settings, hooks, MCP config, scripts, links, binary files, and
+dot-folders inside a skill. A skill file's YAML frontmatter may only describe it (`name`,
+`description`, `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation`,
+`user-invocable`, `disallowed-tools`, `paths`, `license`, `compatibility`, `metadata`).
+Claude Code honours `allowed-tools`, `hooks`, `shell`, `model`, `effort` and subagent keys even
+in an untrusted `claude -p` run, so they're refused. The broker
 drops execute bits, caps an upload at 32 MB (after gunzip) and a profile at 20 MB and 2,000 files, and keeps each profile at a fixed
 path. Claude files sessions by folder, so `resume` keeps working across uploads. A run already
 going keeps the copy it started with.
@@ -219,6 +224,11 @@ socket itself: the relay won't follow a symlink, which could point it at another
   Code checks a link's target against the permission rules, so Read, Grep, Edit and Write
   through a link that leaves the allowed folders are refused (checked with Claude Code 2.1.330). Every run gets:
   - `--setting-sources project`, so your own settings, permissions and hooks are never loaded
+  - `--settings` with `disableAllHooks` and `disableSkillShellExecution`, so no hook and no
+    skill `` !`command` `` runs, whoever wrote it
+  - `add_dirs` passed as `permissions.additionalDirectories`, not `--add-dir`: file access only.
+    Claude Code would load skills, commands and subagents (with their `allowed-tools`) from an
+    `--add-dir` folder, and the client can write those files at any time
   - `--strict-mcp-config`, so only the client's relayed MCP server is available
   - `--permission-mode dontAsk`
   - the prompt on stdin, never on the command line, so it can't be read as an option
