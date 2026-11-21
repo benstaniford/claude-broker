@@ -1,0 +1,4 @@
+# The release is a .deb (scripts/build-deb), not a Python package: this file is for tools.
+[tool.pyright]
+include = ["claude_broker", "tests"]
+pythonVersion = "3.12"

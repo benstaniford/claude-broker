@@ -1,0 +1,19 @@
+[Unit]
+Description=claude-broker: Claude Code as a local service for containers
+Documentation=https://github.com/benstaniford/claude-broker
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/claude-broker serve
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+# claude's installer puts it in ~/.local/bin, which isn't on a service's PATH.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+# SIGTERM: the broker cancels its runs (killing each claude's process group) and exits.
+KillMode=mixed
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

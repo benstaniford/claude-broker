@@ -1,0 +1,21 @@
+Package: claude-broker
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.12)
+Recommends: systemd
+Installed-Size: @SIZE@
+Maintainer: @MAINTAINER@
+Homepage: https://github.com/benstaniford/claude-broker
+Description: Claude Code as a local service for containers
+ Runs `claude -p` as the user who installed it, with their Claude login,
+ and serves client apps (usually Docker containers) over one unix socket
+ each. Apps send prompts, JSON schemas and text-only profiles; replies
+ stream back as NDJSON. Runs are locked down: only the folders and tools a
+ client is configured for, no user settings, hooks or MCP servers. An app's
+ own tools are an MCP server inside its container, relayed by the broker,
+ so no client code runs on the host.
+ .
+ Needs Claude Code installed and logged in for that user. After installing:
+ claude-broker setup
