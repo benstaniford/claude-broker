@@ -28,7 +28,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from . import VERSION
 from .api import validate_run
@@ -123,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
             if not client:
                 return
             url = urlsplit(self.path)
-            parts = [p for p in url.path.split("/") if p]
+            parts = [unquote(p) for p in url.path.split("/") if p]
             query = parse_qs(url.query)
             if parts[:1] != ["v1"]:
                 return self._error(404, "no such endpoint")

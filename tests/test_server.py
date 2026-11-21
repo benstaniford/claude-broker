@@ -157,6 +157,11 @@ class ServerTest(BrokerCase):
         self.assertEqual([r["run_id"] for r in self.app.runs()], ["turn-1"])
         self.assertEqual(self.app.runs()[0]["outcome"], "result")
 
+    def test_run_ids_are_unquoted(self):
+        self.app.result("x", run_id="job:1")                         # the client sends job%3A1
+        self.assertEqual(next(self.app.follow("job:1"))["type"], "started")
+        self.assertEqual(self.app.cancel("job:1")["run_id"], "job:1")
+
     def test_leaving_does_not_stop_a_run(self):
         os.environ["FAKE_SLEEP"] = "1"
         events = self.app.run("x", run_id="r1", schema=SCHEMA)
