@@ -214,7 +214,9 @@ socket itself: the relay won't follow a symlink, which could point it at another
   container that client, and nothing else.
 - **What a run can touch:** its profile and the `add_dirs` it asked for (checked against the
   client's roots after following symlinks), with only the built-in tools asked for. Edit and
-  Write apply only to writable folders. Every run gets:
+  Write apply only to writable folders. A client can still put symlinks inside its own folders; Claude
+  Code checks a link's target against the permission rules, so Read, Grep, Edit and Write
+  through a link that leaves the allowed folders are refused (checked with Claude Code 2.1.330). Every run gets:
   - `--setting-sources project`, so your own settings, permissions and hooks are never loaded
   - `--strict-mcp-config`, so only the client's relayed MCP server is available
   - `--permission-mode dontAsk`
