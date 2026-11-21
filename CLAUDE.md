@@ -4,11 +4,11 @@ Guide for Claude Code in this repo.
 
 ## Project
 
-claude-broker: a systemd user service, shipped as a `.deb`, that runs `claude -p` for client apps
-(Docker containers) over one unix socket per client. It is generic: apps bring their own prompts,
-schemas, text-only profiles and (through an MCP server in their container) tools. Born from the
-Dungeons & Claude DM bridge (`~/Code/DandD/scripts/dm-bridge.py`, issue DandD#56). The README is
-the user-facing reference for the API, events, config and security model; keep it in step.
+claude-broker: a systemd user service, shipped as a `.deb`, that runs `claude
+-p` for client apps (Docker containers) over one unix socket per client. It is
+generic: apps bring their own prompts, schemas, text-only profiles and (through
+an MCP server in their container) tools. The README is the user-facing
+reference for the API, events, config and security model; keep it in step.
 
 ## Commands
 
